@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/AuthMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
+const { validateProduct } = require('../middleware/validators');
+const handleValidationErrors = require('../middleware/errorhandler');
 
 const {
   addProduct,
@@ -18,9 +21,25 @@ router.get('/:id', fetchProductById);
 router.get('/agg/users-products', userProductList);
 router.get('/agg/category-count', countProductsByCategory);
 
-// Protected
-router.post('/', authMiddleware, addProduct);
-router.put('/:id', authMiddleware, updateProduct);
+// Protected + Validated + File upload
+router.post(
+  '/',
+  authMiddleware,
+  upload.single('image'),
+  validateProduct,
+  handleValidationErrors,
+  addProduct
+);
+
+router.put(
+  '/:id',
+  authMiddleware,
+  upload.single('image'),
+  validateProduct,
+  handleValidationErrors,
+  updateProduct
+);
+
 router.delete('/:id', authMiddleware, removeProduct);
 
 module.exports = router;

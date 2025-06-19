@@ -4,5 +4,7 @@ const productSchema= new mongoose.Schema({
     category:String,
     price:Number,
     available:Boolean,
+    image:String,
     ownerId:{type:mongoose.Schema.Types.ObjectId,ref:'user'}});
+
     module.exports=mongoose.model('Product',productSchema);
