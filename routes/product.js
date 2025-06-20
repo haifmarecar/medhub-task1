@@ -4,6 +4,11 @@ const authMiddleware = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const { validateProduct } = require('../middleware/validators');
 const handleValidationErrors = require('../middleware/errorhandler');
+const isAdmin = require('../middleware/isAdminMiddleware');
+const { downloadCSV } = require('../controllers/productController');
+
+router.get('/download-csv', authMiddleware, isAdmin, downloadCSV);
+
 
 const {
   addProduct,

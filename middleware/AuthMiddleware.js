@@ -1,53 +1,57 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/userModel');
 
-
-const authMiddleware = (req, res, next) => {
-  // 1. Check Authorization Header (case-insensitive)
+// Authentication middleware for protecting routes
+const authMiddleware = async (req, res, next) => {
+  // Step 1: Check for Authorization header (case-insensitive)
   const authHeader = req.headers.authorization || req.headers.Authorization;
-  
+
   if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ 
+    return res.status(401).json({
       success: false,
-      message: 'Unauthorized: No Bearer token provided' 
+      message: 'Unauthorized: No Bearer token provided'
     });
   }
 
-  // 2. Extract and Validate Token Structure
+  // Step 2: Extract token after 'Bearer'
   const token = authHeader.split(' ')[1];
-  if (typeof token !== 'string' || token.length < 50) {
-    return res.status(401).json({ 
+  if (typeof token !== 'string' || token.length < 10) {
+    return res.status(401).json({
       success: false,
-      message: 'Unauthorized: Invalid token format' 
+      message: 'Unauthorized: Invalid token format'
     });
   }
 
-  // 3. Verify Token
   try {
+    // Step 3: Verify JWT and decode payload
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256'], // Security: Restrict to HS256
-      maxAge: process.env.JWT_EXPIRES_IN
+      algorithms: ['HS256'],                    // Enforce HS256 algorithm
+      maxAge: process.env.JWT_EXPIRES_IN || '1h' // Optional expiry from .env
     });
 
-    // 4. Attach User Data to Request
-    req.user = {
-      id: decoded.userId,
-      ...(decoded.role && { role: decoded.role }),
-      ...(decoded.sessionId && { sessionId: decoded.sessionId }) // Session tracking
-    };
+    // Step 4: Fetch user from DB to verify identity and get full data (e.g. role)
+    const user = await User.findById(decoded.userId).select('-password');
 
-    next();
+    // Step 5: Handle case where user no longer exists
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized: User not found' });
+    }
+
+    // Step 6: Attach full user data to request object for next middleware/controllers
+    req.user = user;
+    next(); // Pass control to the next middleware or route handler
   } catch (err) {
-    // 5. Detailed Error Responses
+    // Step 7: Handle token errors with specific messages
     let message = 'Invalid token';
     if (err.name === 'TokenExpiredError') message = 'Token expired';
     if (err.name === 'JsonWebTokenError') message = 'Malformed token';
 
     console.error(`JWT Error [IP: ${req.ip}]:`, err.name);
 
-    res.status(401).json({ 
+    res.status(401).json({
       success: false,
       error: err.name,
-      message: `Unauthorized: ${message}` 
+      message: `Unauthorized: ${message}`
     });
   }
 };

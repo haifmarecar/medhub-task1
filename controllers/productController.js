@@ -142,6 +142,28 @@ const countProductsByCategory = async (req, res) => {
   }
 };
 
+const { Parser } = require('json2csv');
+const fs = require('fs');
+const path = require('path');
+
+// CSV export controller
+const downloadCSV = async (req, res) => {
+  try {
+    const products = await Product.find().select('name category price available');
+    const parser = new Parser({ fields: ['name', 'category', 'price', 'available'] });
+    const csv = parser.parse(products);
+
+    const filename = 'products_export.csv';
+    const filePath = path.join(__dirname, '../exports', filename);
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, filename);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 //Export all functions
 module.exports = {
   addProduct,
@@ -150,5 +172,6 @@ module.exports = {
   updateProduct,
   removeProduct,
   userProductList,
-  countProductsByCategory
+  countProductsByCategory,
+  downloadCSV
 };
